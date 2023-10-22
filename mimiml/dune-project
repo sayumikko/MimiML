@@ -6,7 +6,7 @@
 
 (license LGPL-2.1-or-later)
 
-(name JaML)
+(name MimiML)
 
 (source
  (github username/reponame))
