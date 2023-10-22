@@ -5,11 +5,7 @@ on:
     branches:
       - 'master'
 env:
-<<<<<<< HEAD
   OPAMROOT: /home/opam/.opam
-=======
-  OPAMROOT: /home/user/.opam
->>>>>>> 3a72ba3 (CI)
   OPAMCONFIRMLEVEL: unsafe-yes
 
 jobs:
@@ -17,14 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: kakadu18/ocaml:llvm14
-<<<<<<< HEAD
-<<<<<<< HEAD
       options: --user root
-=======
->>>>>>> 3a72ba3 (CI)
-=======
-      options: --user root
->>>>>>> 7d088ff (CI)
 
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
@@ -35,11 +24,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-<<<<<<< HEAD
           fetch-depth: 0                # fix me later
-=======
-          fetch-depth: 1                # fix me later
->>>>>>> 3a72ba3 (CI)
           submodules: true
 
       - name: List installed OPAM packages
@@ -53,21 +38,15 @@ jobs:
         run: |
           echo "${{ steps.branch-name.outputs.ref_branch }}"
 
-<<<<<<< HEAD
       - run: |
           git config --global --add safe.directory /__w/comp23hw/comp23hw
           git config --global --add safe.directory `pwd`
       # I think this is needed because of root
-=======
-      #- run: git remote -vvv
-      #- run: git branch -vvv
->>>>>>> 3a72ba3 (CI)
 
         #  Outputs: "main"
       ############# Detecting and compiling fp2023
       # Smart link about setting environment variables
       # https://docs.github.com/en/actions/reference/workflow-commands-for-github-actions#setting-an-environment-variable
-<<<<<<< HEAD
       #- if: false
       #  #if: ${{ github.event.pull_request.user.login != 'fp2022-helper' }}
       #  run: |
@@ -82,16 +61,6 @@ jobs:
       - run: opam exec -- ocaml ./detect_latest_pr.ml -repo comp23hw "pull/${{ steps.branch-name.outputs.ref_branch }}" -v
       - run: |
           opam exec -- ocaml ./detect_latest_pr.ml -repo comp23hw "pull/${{ steps.branch-name.outputs.ref_branch }}" >> $GITHUB_ENV
-=======
-      - if: false
-        #if: ${{ github.event.pull_request.user.login != 'fp2022-helper' }}
-        run: |
-          sh -x ./detect_latest_pr.sh "pull/${{ steps.branch-name.outputs.ref_branch }}" >> $GITHUB_ENV
-          echo "${{ env.latest }}"
-
-      - run: |
-          opam exec -- ocaml ./detect_latest_pr.ml "pull/${{ steps.branch-name.outputs.ref_branch }}" >> $GITHUB_ENV
->>>>>>> 3a72ba3 (CI)
           echo "${{ env.latest }}"
         #if: ${{ github.event.pull_request.user.login == 'fp2022-helper' }}
 
@@ -108,17 +77,7 @@ jobs:
       - name: Running tests in ${{ env.latest }}...
         run: cd ${{ env.latest }} && opam exec -- dune runtest --profile=release
 
-<<<<<<< HEAD
       - name: Setting the environment
-=======
-      - name: Build API documentation for ${{ env.latest }}...
-        run: |
-          opam install odoc --yes
-          cd ${{ env.latest }} && opam exec -- dune build @doc --profile=release
-
-      - name: Setting the environment
-        if: false
->>>>>>> 3a72ba3 (CI)
         env:
           LINTS_PATH: _build/default/_found_lints
         run: |
@@ -127,7 +86,6 @@ jobs:
           cd ${{ env.latest }} && mkdir -p ${{ env.LINTS_PATH }}
           echo "ZANUDA_REPORT_FILE_PATH=${{ env.LINTS_PATH }}/lints.txt" >> $GITHUB_ENV
 
-<<<<<<< HEAD
       - run: |
           echo ${{ env.latest }}          > projectname.txt
           echo ${{ github.event.number }} > PR_number.txt
@@ -135,78 +93,6 @@ jobs:
           echo ${{ env.latest }}          > ${{ env.latest }}/projectname.txt
           echo ${{ github.event.number }} > ${{ env.latest }}/PR_number.txt
 
-=======
-      - name: Running linter in ${{ env.latest }}...
-        if: false
-        run: |
-          cd ${{ env.latest }} && opam exec -- zanuda -dir . -add-prefix ${{ env.latest }}/ -ordjsonl ${{ env.RDJSON_FILE_PATH }} > ${{ env.ZANUDA_REPORT_FILE_PATH }}
-
-      - run: cat ${{ env.latest }}/${{ env.RDJSON_FILE_PATH }}
-        if: false
-      - name: Preparing lints tarball
-        if: false
-        run: |
-          echo ${{ env.latest }} > ${{ env.latest }}/${{ env.RDJSON_DIR_PATH }}/projectname.txt
-          echo ${{ github.event.pull_request.user.login }} > ${{ env.latest }}/${{ env.RDJSON_DIR_PATH }}/piarast.txt
-          echo ${{ github.event.number }} > ${{ env.latest }}/${{ env.RDJSON_DIR_PATH }}/PR_number.txt
-          echo ${{ github.event.pull_request.head.sha }} > ${{ env.latest }}/${{ env.RDJSON_DIR_PATH }}/CI_COMMIT.txt
-      # we use commit previous from head because HEAD is merge commit by some reason
-      # TODO: maybe PR_number is not required
-
-      - name: Upload linter (review.zip) artifact
-        if: false
-        uses: actions/upload-artifact@v3
-        with:
-          name: review
-          path: |
-            ${{ env.latest }}/${{ env.RDJSON_DIR_PATH }}
-
-      - run: echo $(git rev-parse HEAD)
-      - run: echo $(git rev-parse HEAD~1)
-      - run: echo ${{ github.event.pull_request.head.sha }}
-      - run: PAGER= git log
-
-      - name: Update docs artifact
-        if: false
-        uses: actions/upload-artifact@v3
-        with:
-          name: docs
-          path: |
-            ${{ env.latest }}/_build/default/_doc/_html
-            ${{ env.latest }}/${{ env.RDJSON_DIR_PATH }}/projectname.txt
-            ${{ env.latest }}/${{ env.RDJSON_DIR_PATH }}/PR_number.txt
-          #${{ env.latest }}/${{ env.RDJSON_DIR_PATH }}/CI_COMMIT.txt
-
-      # Omitted. It is in docker image already
-      #- name: Installing a clone detector
-      #  run: npm install jscpd
-
-      #- run: which jscpd || exit 0
-      #- run: ls ~/.local/bin || exit 0
-      #- run: pwd ~ || exit 0
-
-      - name: Looking for clones
-        if: false
-        run: |
-          echo ${{ env.latest }} > projectname.txt
-          python3 ./find_clones.py ${{ env.latest }}
-          #python3 -m trace --trace ./find_clones.py ${{ env.latest }}
-
-      - run: echo ${{ github.event.number }} > PR_number.txt
-
-      - run: cat jscpd_report.txt
-        if: false
-
-      - name: Update JSCPD artifact
-        if: false
-        uses: actions/upload-artifact@v3
-        with:
-          name: jscpd_report
-          path: |
-            jscpd_report.txt
-            PR_number.txt
-            projectname.txt
->>>>>>> 3a72ba3 (CI)
 
       ###################### Coverage #####################################
 
@@ -218,14 +104,6 @@ jobs:
           BISECT_DIR: /tmp/bisect_ppx_data
           BISECT_FILE: /tmp/bisect_ppx_data/data
 
-<<<<<<< HEAD
-=======
-      #- run: ls ${{ env.BISECT_DIR }}
-      #  env:
-      #    BISECT_DIR: /tmp/bisect_ppx_data
-      #    BISECT_FILE: /tmp/bisect_ppx_data/data
-
->>>>>>> 3a72ba3 (CI)
       - name: Calculating coverage (2/2)
         id: calc-coverage
         run: |
@@ -242,7 +120,6 @@ jobs:
           BISECT_FILE: /tmp/bisect_ppx_data/data
 
       - name: Update coverage artifact ${{ steps.calc-coverage.outputs.percent }}
-<<<<<<< HEAD
         uses: actions/upload-artifact@v3
         with:
           name: coverage
@@ -318,10 +195,3 @@ jobs:
             jscpd_report.txt
             PR_number.txt
             projectname.txt
-=======
-        if: false
-        uses: actions/upload-artifact@v3
-        with:
-          name: coverage
-          path: ${{ env.latest }}/_coverage
->>>>>>> 3a72ba3 (CI)
