@@ -2,7 +2,6 @@
 #require "unix";;
 #require "str";;
 
-<<<<<<< HEAD
 type config =
   { mutable repo: string
   ; mutable user: string
@@ -27,12 +26,6 @@ let red = "\027[0;31m"
 let no_color = "\027[0m"
 
 let log fmt = Format.kasprintf (fun s -> if config.verbose then print_endline s) fmt
-=======
-let red = "\027[0;31m"
-let no_color = "\027[0m"
-
-let log fmt = Format.kasprintf (fun s -> if false then print_endline s ) fmt
->>>>>>> 3a72ba3 (CI)
 let get_output fmt =
   Format.kasprintf (fun cmd ->
       log "Running: %s%s%s" red cmd no_color;
@@ -41,14 +34,9 @@ let get_output fmt =
       let () = In_channel.close ch in
       s)
     fmt
-<<<<<<< HEAD
   ;;
 let commandf fmt = Format.kasprintf Sys.command fmt
 ;;
-=======
-;;
-
->>>>>>> 3a72ba3 (CI)
 open Printf
 
 (* let () = print_endline "hello world" *)
@@ -57,25 +45,12 @@ let () =
   let s = get_output "git remote | grep upstream" in
   log "%S" s;
   if not (List.mem "upstream" @@ Str.split (Str.regexp "\n") s) then (
-<<<<<<< HEAD
     let _ = commandf "git remote add upstream https://github.com/%s/%s.git" config.user config.repo in
     let _ = commandf "git fetch upstream master" in
-=======
-    let _ = Sys.command "git remote add upstream https://github.com/Kakadu/fp2023.git" in
-    let _ = Sys.command "git fetch upstream master" in
->>>>>>> 3a72ba3 (CI)
     Format.eprintf "Upstream added\n%!";
     ()
   )
 
-<<<<<<< HEAD
-=======
-
-let user_branch =
-  if Array.length Sys.argv < 2
-  then "master" else Sys.argv.(1)
-
->>>>>>> 3a72ba3 (CI)
 let merge_base =
   let s = get_output "git merge-base upstream/master %s" (* user_branch *) "HEAD" in
   match Str.split (Str.regexp "\n") s |> List.filter ((<>)"") with
@@ -85,11 +60,7 @@ let merge_base =
       Format.eprintf "[ %s ]\n%!" (String.concat "; " xs);
       exit 1
 
-<<<<<<< HEAD
 let () = log "merge_base: %S" merge_base
-=======
-let () = log "%S " merge_base
->>>>>>> 3a72ba3 (CI)
 
 let calculate_common_subdir files =
   let module SS = Set.Make(String) in
@@ -109,11 +80,7 @@ let pp_str_list ppf xs =
 (*  *)
 let () =
   let s =
-<<<<<<< HEAD
     get_output "git diff-tree %s..%s  | rev | cut -f 1 | rev" merge_base config.user_branch in
-=======
-    get_output "git diff-tree %s..%s  | rev | cut -f 1 | rev" merge_base user_branch in
->>>>>>> 3a72ba3 (CI)
   log "%S " s;
   let changed_files =
     String.split_on_char '\n' s |> List.filter (function
