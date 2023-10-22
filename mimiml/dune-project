@@ -1,5 +1,36 @@
 (lang dune 3.10)
 
-(name mimiml)
+(generate_opam_files true)
 
-(map_workspace_root false)
+(cram enable)
+
+(license LGPL-2.1-or-later)
+
+(name JaML)
+
+(source
+ (github username/reponame))
+
+(authors "Lev Golofastov, Ksenia Kuzmina")
+
+(maintainers "Lev Golofastov, Ksenia Kuzmina")
+
+(bug_reports "https://github.com/l-golofastov/MimiML/issues")
+
+(homepage "https://github.com/l-golofastov/MimiML")
+
+(package
+ (name MimiML)
+ (synopsis "MimiML")
+ (description "Mimi mini language")
+ (version 0.1)
+ (depends
+  ocaml
+  dune
+  angstrom
+  (ppx_inline_test :with-test)
+  ppx_expect
+  ppx_deriving
+  ppx_variants_conv
+  bisect_ppx
+  (ocamlformat :build)))
