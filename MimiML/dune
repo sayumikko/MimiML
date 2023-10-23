@@ -1,5 +1,7 @@
 (executable
  (name repl)
  (public_name repl)
- (libraries MimiML)
- (modes byte exe))
+ (modules MimiML)
+ (libraries MimiML.Lib stdio)
+ (instrumentation
+  (backend bisect_ppx)))
