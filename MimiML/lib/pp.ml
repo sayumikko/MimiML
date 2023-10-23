@@ -1,9 +1,16 @@
+<<<<<<< HEAD
 (** Copyright 2023, Lev Golofastov & Ksenia Kuzmina *)
+=======
+(** Copyright 2022-2023, Lev Golofastov *)
+>>>>>>> f268181 (Update dune and rename project)
 
 (** SPDX-License-Identifier: LGPL-3.0-or-later *)
 
 open Ast
+<<<<<<< HEAD
 open Anf
+=======
+>>>>>>> f268181 (Update dune and rename project)
 open Format
 
 let show_prim_ty =
@@ -54,6 +61,7 @@ let pp_expr =
   in
   pp
 ;;
+<<<<<<< HEAD
 
 let pp_anf_prog ppf p =
   let pp_imm ppf i =
@@ -89,3 +97,5 @@ let pp_anf_prog ppf p =
   fprintf ppf "fn main =\n";
   pp_ablock ppf prog
 ;;
+=======
+>>>>>>> f268181 (Update dune and rename project)
