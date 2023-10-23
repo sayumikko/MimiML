@@ -1,6 +1,6 @@
 (library
  (name MimiML_lib)
- (public_name mimiml)
+ (public_name MimiML)
  (modules Ast Parser Typing Inferencer Pp)
  (libraries base angstrom stdio)
  (preprocess
