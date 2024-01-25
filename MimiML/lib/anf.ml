@@ -36,29 +36,19 @@ module NameGen = struct
     Format.sprintf "%s%d" prefix !cnt
   ;;
 
-  let gen_name_lambda () = gen_name "lambda@"
-  let gen_name_im () = gen_name "i@"
-
-  let gen_number () =
-    cnt := !cnt + 1;
-    string_of_int (!cnt + 1)
-  ;;
+  let gen_name_lambda () = gen_name "lambda."
+  let gen_name_im () = gen_name "i."
 end
-
-let fresh_name var = var ^ "_" ^ NameGen.gen_number ()
 
 type clres = expr -> closuremap * expr * (string * expr) list
 
-(* Name (a) => List (f_a, f_g_a, f_g_a_1 etc)*)
-type rename_map = string list ClosureMap.t
-
 let rec rename_ast ast traceback used_vars =
-  let traceback_name = List.fold_left (Format.sprintf "%s%s@") "" (List.rev traceback) in
+  let traceback_name = List.fold_left (Format.sprintf "%s%s.") "" (List.rev traceback) in
   let rename_new_var v used_vars =
     let rec rename_used new_name =
       let tb_name = traceback_name ^ new_name in
       match ClosureMap.find_opt tb_name used_vars with
-      | Some x -> rename_used (List.hd x ^ "@")
+      | Some x -> rename_used (List.hd x ^ ".")
       | None -> tb_name
     in
     rename_used v
@@ -201,7 +191,7 @@ let rec anf prog : expr -> aprogram = function
     let prog = body_prog @ in_e_prog in
     in_e_imm, prog
   | EVar v -> ImmValue v, prog
-  | ELam _ -> failwith "closure conversion not performed"
+  | _ -> ImmValue "Not performed", prog
 ;;
 
 let anf_fun name : expr -> afun = function
