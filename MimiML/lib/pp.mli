@@ -1,3 +1,7 @@
+(** Copyright 2023, Lev Golofastov & Ksenia Kuzmina *)
+
+(** SPDX-License-Identifier: LGPL-3.0-or-later *)
+
 open Ast
 open Anf
 open Format
