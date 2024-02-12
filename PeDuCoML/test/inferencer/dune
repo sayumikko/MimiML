@@ -1,7 +1,0 @@
-(executable
- (name inferencer_test)
- (modules inferencer_test)
- (libraries PeDuCoML.Lib stdio))
-
-(cram
- (deps ./inferencer_test.exe))

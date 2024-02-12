@@ -21,6 +21,6 @@
   dune
   bisect_ppx
   (llvm
-   (= "16.0.6+nnp"))))
+   (= 14.0.6))))
 
 ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project
