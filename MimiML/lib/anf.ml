@@ -29,18 +29,45 @@ let rec find_free_vars known (expr : expr) =
 
 (* intermideate name generator *)
 module NameGen = struct
-  let cnt = ref 0
+  type state = { cnt : int }
+  type 'a t = state -> 'a * state
 
-  let gen_name prefix =
-    cnt := !cnt + 1;
-    Format.sprintf "%s%d" prefix !cnt
+  let gen_name prefix state =
+    let next_cnt = state.cnt + 1 in
+    let new_state = { cnt = next_cnt } in
+    Format.sprintf "%s%d" prefix next_cnt, new_state
   ;;
 
-  let gen_name_lambda () = gen_name "lambda."
-  let gen_name_im () = gen_name "i."
+  let gen_name_lambda () state = gen_name "lambda." state
+  let gen_name_im () state = gen_name "i." state
+
+  let bind t f state =
+    let a, ts = t state in
+    let b, fs = f a ts in
+    b, fs
+  ;;
+
+  let ( let* ) = bind
+  let run m = m { cnt = 0 } |> fst
+
+  let ( >>| ) m f state =
+    let v, s = m state in
+    f v, s
+  ;;
+
+  let ret a state = a, state
+
+  let monadic_map f l =
+    List.fold_right
+      (fun e acc ->
+        let* acc = acc in
+        f e >>| fun e -> e :: acc)
+      l
+      (ret [])
+  ;;
 end
 
-type clres = expr -> closuremap * expr * (string * expr) list
+type clres = closuremap * expr * (string * expr) list
 
 let rec rename_ast ast traceback used_vars =
   let traceback_name = List.fold_left (Format.sprintf "%s%s.") "" (List.rev traceback) in
@@ -89,23 +116,26 @@ let rec rename_ast ast traceback used_vars =
     ELet ((rf, PatVar new_name, inner_e), outer_e)
 ;;
 
+open NameGen
+
 (* closure: expr -> fun list * expr *)
-let rec closure (known : string list) (cm : closuremap) : clres =
+let rec closure (known : string list) (cm : closuremap) : expr -> clres NameGen.t =
   let klosure = closure in
   let closure = closure known in
   let name_and_lift known arg body name =
     let free_vars = ELam (PatVar arg, body) |> find_free_vars known in
     let cm = ClosureMap.add name free_vars cm in
-    let cm, body, lftd_b = closure cm body in
+    let* v = closure cm body in
+    let cm, body, lftd_b = v in
     (* add args *)
     let lifted_body =
       List.fold_left (fun x y -> ELam (PatVar y, x)) (ELam (PatVar arg, body)) free_vars
     in
-    let _, clsr, _ = EVar name |> closure cm in
-    cm, clsr, lftd_b @ [ name, lifted_body ]
+    let* _, clsr, _ = EVar name |> closure cm in
+    ret (cm, clsr, lftd_b @ [ name, lifted_body ])
   in
   function
-  | EConst c -> cm, EConst c, []
+  | EConst c -> ret (cm, EConst c, [])
   | EVar var ->
     let apply fn arg = EApp (fn, EVar arg) in
     (match ClosureMap.find_opt var cm with
@@ -113,34 +143,37 @@ let rec closure (known : string list) (cm : closuremap) : clres =
      | Some args -> cm, List.fold_left apply (EVar var) args, []
      (* var is either a simple var or a closure with no unbound vars, leaving just var *)
      | None -> cm, EVar var, [])
+    |> NameGen.ret
   | EApp (ex1, ex2) ->
-    let cm, res1, lftd1 = closure cm ex1 in
-    let cm, res2, lftd2 = closure cm ex2 in
-    cm, EApp (res1, res2), lftd1 @ lftd2
+    let* cm, res1, lftd1 = closure cm ex1 in
+    let* cm, res2, lftd2 = closure cm ex2 in
+    ret (cm, EApp (res1, res2), lftd1 @ lftd2)
   | EIfElse (ex1, ex2, ex3) ->
-    let cm, res1, lftd1 = closure cm ex1 in
-    let cm, res2, lftd2 = closure cm ex2 in
-    let cm, res3, lftd3 = closure cm ex3 in
-    cm, EIfElse (res1, res2, res3), lftd1 @ lftd2 @ lftd3
+    let* cm, res1, lftd1 = closure cm ex1 in
+    let* cm, res2, lftd2 = closure cm ex2 in
+    let* cm, res3, lftd3 = closure cm ex3 in
+    ret (cm, EIfElse (res1, res2, res3), lftd1 @ lftd2 @ lftd3)
   | ELet ((r, PatVar name, ELam (PatVar arg, expr)), body) ->
     let known =
       match r with
       | RecF -> name :: known
       | _ -> known
     in
-    let cm, _, l = name_and_lift known arg expr name in
-    let cm, body, lifted = closure cm body in
-    cm, body, l @ lifted
-  | ELam (PatVar pat, expr) -> name_and_lift known pat expr (NameGen.gen_name_lambda ())
+    let* cm, _, l = name_and_lift known arg expr name in
+    let* cm, body, lifted = closure cm body in
+    ret (cm, body, l @ lifted)
+  | ELam (PatVar pat, expr) ->
+    let* name = gen_name_lambda () in
+    name_and_lift known pat expr name
   | ELet ((r, PatVar pat, value), body) ->
     let known =
       match r with
       | RecF -> pat :: known
       | _ -> known
     in
-    let cm, value_res, lftd_v = klosure known cm value in
-    let cm, body_res, lftd_b = klosure (pat :: known) cm body in
-    cm, ELet ((r, PatVar pat, value_res), body_res), lftd_v @ lftd_b
+    let* cm, value_res, lftd_v = klosure known cm value in
+    let* cm, body_res, lftd_b = klosure (pat :: known) cm body in
+    ret (cm, ELet ((r, PatVar pat, value_res), body_res), lftd_v @ lftd_b)
 ;;
 
 let closure ast =
@@ -166,35 +199,35 @@ and ablock = immexpr * alet list (* ANF Block: a = 3; b = 2 + 1; c = a + b; c *)
 type aprogram = ablock (* Whole program *)
 type afun = string * string list * ablock (* Functions *)
 
-let rec anf prog : expr -> aprogram = function
-  | EConst (CInt i) -> ImmNum i, prog
-  | EConst (CBool b) -> ImmBool b, prog
-  | EConst (CString s) -> ImmString s, prog
-  | EConst CUnit -> ImmUnit, prog
+let rec anf prog = function
+  | EConst (CInt i) -> ret (ImmNum i, prog)
+  | EConst (CBool b) -> ret (ImmBool b, prog)
+  | EConst (CString s) -> ret (ImmString s, prog)
+  | EConst CUnit -> ret (ImmUnit, prog)
   | EApp (fn, arg) ->
-    let name = NameGen.gen_name_im () in
-    let fn_imm, fn_prog = anf prog fn in
-    let arg_imm, arg_prog = anf prog arg in
+    let* name = gen_name_im () in
+    let* fn_imm, fn_prog = anf prog fn in
+    let* arg_imm, arg_prog = anf prog arg in
     let prog = fn_prog @ arg_prog @ [ name, CApp (fn_imm, arg_imm) ] in
-    ImmValue name, prog
+    ret (ImmValue name, prog)
   | EIfElse (i, t, e) ->
-    let name = NameGen.gen_name_im () in
-    let i_imm, i_prog = anf prog i in
-    let t_imm, t_prog = anf prog t in
-    let e_imm, e_prog = anf prog e in
+    let* name = NameGen.gen_name_im () in
+    let* i_imm, i_prog = anf prog i in
+    let* t_imm, t_prog = anf prog t in
+    let* e_imm, e_prog = anf prog e in
     let prog = i_prog @ [ name, CIfElse (i_imm, (t_imm, t_prog), (e_imm, e_prog)) ] in
-    ImmValue name, prog
+    ret (ImmValue name, prog)
   | ELet ((_, PatVar name, body), in_e) ->
-    let body_imm, body_prog = anf prog body in
+    let* body_imm, body_prog = anf prog body in
     let body_prog = body_prog @ [ name, CImm body_imm ] in
-    let in_e_imm, in_e_prog = anf prog in_e in
+    let* in_e_imm, in_e_prog = anf prog in_e in
     let prog = body_prog @ in_e_prog in
-    in_e_imm, prog
-  | EVar v -> ImmValue v, prog
-  | _ -> ImmValue "Not performed", prog
+    ret (in_e_imm, prog)
+  | EVar v -> ret (ImmValue v, prog)
+  | _ -> ret (ImmValue "Not performed", prog)
 ;;
 
-let anf_fun name : expr -> afun = function
+let anf_fun name = function
   | ELam (PatVar a, e) ->
     let rec get_args = function
       | ELam (PatVar a, e) ->
@@ -203,13 +236,19 @@ let anf_fun name : expr -> afun = function
       | other -> [], other
     in
     let all_args, expr = get_args (ELam (PatVar a, e)) in
-    let res, prog = anf [] expr in
-    name, all_args, (res, prog)
-  | e -> name, [], anf [] e
+    let* res, prog = anf [] expr in
+    ret (name, all_args, (res, prog))
+  | e ->
+    let* res = anf [] e in
+    ret (name, [], res)
 ;;
 
-let anf : expr -> afun list * aprogram =
-  fun ast ->
-  let _, expr, lifted = closure ast in
-  List.map (fun (x, y) -> anf_fun x y) lifted, anf [] expr
+let anf ast =
+  let inner =
+    let* _, expr, lifted = closure ast in
+    let* lifted_anfs = monadic_map (fun (x, y) -> anf_fun x y) lifted in
+    let* expr_anf = anf [] expr in
+    ret (lifted_anfs, expr_anf)
+  in
+  run inner
 ;;
