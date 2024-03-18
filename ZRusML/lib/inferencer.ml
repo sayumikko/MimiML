@@ -29,7 +29,7 @@ module R : sig
   end
 
   val fresh : int t
-  val run : 'a t -> ('a, error) Result.t
+  val run : 'a t -> int -> ('a, error) Result.t
 end = struct
   type 'a t = int -> int * ('a, error) Result.t
 
@@ -66,7 +66,7 @@ end = struct
   end
 
   let fresh : int t = fun last -> last + 1, Result.Ok last
-  let run m = snd (m 0)
+  let run m x = snd (m x)
 end
 
 type fresh = int
@@ -130,7 +130,7 @@ end = struct
       | TVar n ->
         (match find_exn n s with
          | exception Not_found_s _ -> TVar n
-         | x -> x)
+         | x -> ehelper x)
       | TArr (left, right) -> arrow_t (ehelper left) (ehelper right)
       | ground -> ground
     in
@@ -261,12 +261,6 @@ let lookup_env e map =
   | Some scheme ->
     let* ans = instantiate scheme in
     return (Subst.empty, ans, map)
-;;
-
-let rec get_name = function
-  | EApp (l, _) -> get_name l
-  | EVar name -> return name
-  | _ -> fail `Not_function
 ;;
 
 let infer =
@@ -404,7 +398,8 @@ let check_types environment (dec : decl) =
     let* subst' = unify (Subst.apply subst type_variable) typ in
     let* final_subst = Subst.compose subst' subst in
     let env = TypeEnv.apply final_subst env in
-    let generalized_type = generalize env (Subst.apply final_subst type_variable) in
+    let typ = Subst.apply final_subst type_variable in
+    let generalized_type = generalize env typ in
     return (TypeEnv.extend environment' name generalized_type, typ)
   | DLet (_, pt, exp) ->
     let name =
@@ -413,9 +408,9 @@ let check_types environment (dec : decl) =
       | _ -> "_"
     in
     let* subst, function_type, environment' = infer environment exp in
-    let res_typ = function_type in
-    let generalized_type = generalize environment' (Subst.apply subst res_typ) in
+    let res_typ = Subst.apply subst function_type in
+    let generalized_type = generalize environment' res_typ in
     return (TypeEnv.extend environment' name generalized_type, res_typ)
 ;;
 
-let run_inference expression env = run (check_types env expression)
+let run_inference expression env x = run (check_types env expression) x
